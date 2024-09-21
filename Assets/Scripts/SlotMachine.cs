@@ -3,6 +3,7 @@ using UnityEditor;
 #endif
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
 [ExecuteAlways] // Allows Update to run in the Editor
 public class SlotManager : MonoBehaviour
@@ -13,7 +14,12 @@ public class SlotManager : MonoBehaviour
     [Range(0.01f, 1f)]
     [SerializeField] float scale = 0.5f;
     [Range(3, 5)]
-    [SerializeField] int slots = 3;
+    [SerializeField] int verticalSlotsCount = 3;
+
+    bool slotsSpinning = false;
+
+    [Header("VisualSettings")]
+    [SerializeField] float spinSpeed = 3f;
 
     Transform[] verticalSlots; // 5 is max vertical slot count
 
@@ -40,7 +46,7 @@ public class SlotManager : MonoBehaviour
 
         if (editMode == true) Debug.LogError("In Editor Disable Edit Mode In SlotMachine Script When In Play Mode");
 
-        verticalSlots = new Transform[slots];
+        verticalSlots = new Transform[verticalSlotsCount];
 
         for (int i = 0; i < verticalSlotsContainer.childCount; i++)
         {
@@ -94,14 +100,14 @@ public class SlotManager : MonoBehaviour
         int currentSlotCount = verticalSlotsContainer.childCount;
 
         // Add slots if current count is less than the desired count
-        for (int i = currentSlotCount; i < slots; i++)
+        for (int i = currentSlotCount; i < verticalSlotsCount; i++)
         {
             Transform newSlot = Instantiate(initialSlot, verticalSlotsContainer);
             newSlot.name = $"VerticalSlot {i + 1}"; // Optional: rename slots for clarity
         }
 
         // Remove extra slots if current count is more than the desired count
-        for (int i = currentSlotCount - 1; i >= slots; i--)
+        for (int i = currentSlotCount - 1; i >= verticalSlotsCount; i--)
         {
 #if UNITY_EDITOR
             DestroyImmediate(verticalSlotsContainer.GetChild(i).gameObject);
@@ -117,16 +123,9 @@ public class SlotManager : MonoBehaviour
     
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.K))
-        {
-            ResetSlotPosition();
-        }
-        if (Input.GetKeyDown(KeyCode.L))
-        {
-            SetSlotPositionsFinish();
-        }
 
-        
+        if (Input.GetKeyDown(KeyCode.S)) RunSlotAnimations();
+
         // EDITOR CODE HERE
 
         // This ensures Update runs even when not in play mode (for Editor use)
@@ -138,13 +137,52 @@ public class SlotManager : MonoBehaviour
             shouldUpdateSlots = false;
         }
     }
-
-    private void ResetSlotPosition()
+    
+    private void ResetSlotPositions()
     {
         foreach (Transform verticalSlot in verticalSlots)
         {
             verticalSlot.localPosition = new Vector3(verticalSlot.localPosition.x, verticalSlotYStart, verticalSlot.localPosition.z);
         }
+    }
+    
+    private void RunSlotAnimations()
+    {
+        ResetSlotPositions();
+        StartCoroutine(RunSlotAnimationsCoroutine());
+    }
+
+    IEnumerator RunSlotAnimationsCoroutine()
+    {
+        slotsSpinning = true;
+
+        for (int i = 0; i < verticalSlotsCount; i++)
+        {
+            Transform vSlot = verticalSlots[i];
+            Vector3 targetPos = new Vector3(vSlot.localPosition.x, verticalSlotYEnd, vSlot.localPosition.z);
+
+            // Start the slot movement coroutine
+            yield return StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos, spinSpeed));
+
+            // Wait until the slot has reached its position before moving to the next slot
+        }
+
+        SetSlotPositionsFinish();
+        slotsSpinning = false;
+    }
+
+    IEnumerator MoveObjectLocalSmooth(Transform movingObject, Vector3 targetPosition, float speed)
+    {
+        float threshold = 0.1f; // Define a small threshold for floating-point precision issues
+
+        while (Vector3.Distance(movingObject.localPosition, targetPosition) > threshold)
+        {
+            movingObject.localPosition = Vector3.MoveTowards(movingObject.localPosition, targetPosition, speed * 1000f * Time.deltaTime);
+            yield return null;
+        }
+
+        // Snap to the exact position to avoid issues due to floating-point precision
+        movingObject.localPosition = targetPosition;
     }
 
     private void SetSlotPositionsFinish()
