@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 
 [ExecuteAlways] // Allows Update to run in the Editor
 public class SlotManager : MonoBehaviour
@@ -18,7 +19,22 @@ public class SlotManager : MonoBehaviour
 
     bool slotsSpinning = false;
 
-    [Header("VisualSettings")]
+    [Header("Spin Style")]
+    [SerializeField] SpinInStyle spinInStyle;
+    [SerializeField] float bounceSpeed = 0.5f;
+    [SerializeField] SpinOutStyle spinOutStyle;
+    public enum SpinOutStyle
+    {
+        all,
+        oneByOne,
+    }
+    public enum SpinInStyle
+    {
+        robust,
+        bouncy,
+    }
+
+    [Header("Spin Settings")]
     [SerializeField] float spinSpeedIn = 3f;
     [SerializeField] float spinSpeedOut = 6f;
 
@@ -126,8 +142,9 @@ public class SlotManager : MonoBehaviour
     private void Update()
     {
 
-        if (Input.GetKeyDown(KeyCode.S)) RunSlotInAnimations();
-        if (Input.GetKeyDown(KeyCode.W)) RunSlotOutAnimations();
+        if (Input.GetKeyDown(KeyCode.S)) Spin();
+        if (Input.GetKeyDown(KeyCode.R)) SetSlotPositionsFinish();
+
 
         // EDITOR CODE HERE
 
@@ -140,6 +157,31 @@ public class SlotManager : MonoBehaviour
             shouldUpdateSlots = false;
         }
     }
+
+    private void Spin()
+    {
+        if (slotsSpinning) return;
+
+        RunSlotAnimation();
+    }
+
+    private void RunSlotAnimation()
+    {
+        StartCoroutine(RunSlotSpinAnimation());
+    }
+
+    IEnumerator RunSlotSpinAnimation()
+    {
+        RunSlotOutAnimation();
+
+        while (slotsSpinning)
+        {
+            yield return null;
+        }
+
+        RunSlotInAnimation();
+
+    }
     
     private void ResetSlotPositions()
     {
@@ -149,7 +191,7 @@ public class SlotManager : MonoBehaviour
         }
     }
     
-    private void RunSlotInAnimations()
+    private void RunSlotInAnimation()
     {
         ResetSlotPositions();
         StartCoroutine(RunSlotInAnimationsCoroutine());
@@ -159,22 +201,38 @@ public class SlotManager : MonoBehaviour
     {
         slotsSpinning = true;
 
-        for (int i = 0; i < verticalSlotsCount; i++)
+        if (spinInStyle == SpinInStyle.robust)
         {
-            Transform vSlot = verticalSlots[i];
-            Vector3 targetPos = new Vector3(vSlot.localPosition.x, verticalSlotYEnd, vSlot.localPosition.z);
+            for (int i = 0; i < verticalSlotsCount; i++)
+            {
+                Transform vSlot = verticalSlots[i];
+                Vector3 targetPos = new Vector3(vSlot.localPosition.x, verticalSlotYEnd, vSlot.localPosition.z);
 
-            // Start the slot movement coroutine
-            yield return StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos, spinSpeedIn));
+                // Start the slot movement coroutine
+                yield return StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos, spinSpeedIn));
 
-            // Wait until the slot has reached its position before moving to the next slot
+                // Wait until the slot has reached its position before moving to the next slot
+            }
+        }
+        else if (spinInStyle == SpinInStyle.bouncy)
+        {
+            for (int i = 0; i < verticalSlotsCount; i++)
+            {
+                Transform vSlot = verticalSlots[i];
+                Vector3 targetPos = new Vector3(vSlot.localPosition.x, verticalSlotYEnd * 1.1f, vSlot.localPosition.z);
+
+                // Start the slot movement coroutine
+                yield return StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos - (Vector3.up * 200f), spinSpeedIn));
+                yield return StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos, bounceSpeed));
+                // Wait until the slot has reached its position before moving to the next slot
+            }
         }
 
         SetSlotPositionsFinish();
         slotsSpinning = false;
     }
 
-    private void RunSlotOutAnimations()
+    private void RunSlotOutAnimation()
     {
         StartCoroutine(RunSlotOutAnimationsCoroutine());
     }
@@ -182,22 +240,49 @@ public class SlotManager : MonoBehaviour
     IEnumerator RunSlotOutAnimationsCoroutine()
     {
         slotsSpinning = true;
-
-        for (int i = 0; i < verticalSlotsCount; i++)
+        SetSlotPositionsFinish();
+        if (spinOutStyle == SpinOutStyle.oneByOne)
         {
-            Transform vSlot = verticalSlots[i];
-            Vector3 targetPos = new Vector3(vSlot.localPosition.x, -verticalSlotYStart, vSlot.localPosition.z);
+            for (int i = 0; i < verticalSlotsCount; i++)
+            {
+                Transform vSlot = verticalSlots[i];
+                Vector3 targetPos = new Vector3(vSlot.localPosition.x, -verticalSlotYStart, vSlot.localPosition.z);
 
-            // Start the slot movement coroutine
-            yield return StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos, spinSpeedOut));
+                // Start the slot movement coroutine and wait until it's finished before moving to the next slot
+                yield return StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos, spinSpeedOut));
 
-            // Wait until the slot has reached its position before moving to the next slot
+                // small delay before the next slot starts moving
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+        else if (spinOutStyle == SpinOutStyle.all)
+        {
+            List<Coroutine> coroutines = new List<Coroutine>();
+
+            for (int i = 0; i < verticalSlotsCount; i++)
+            {
+                Transform vSlot = verticalSlots[i];
+                Vector3 targetPos = new Vector3(vSlot.localPosition.x, -verticalSlotYStart, vSlot.localPosition.z);
+
+                // Start the slot movement coroutine and add it to the list
+                coroutines.Add(StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos, spinSpeedOut + UnityEngine.Random.Range(-0.1f, 0.1f))));
+            }
+
+            // Wait for all slot movement coroutines to finish
+            yield return CombineCoroutines(coroutines);
         }
 
         ResetSlotPositions();
         slotsSpinning = false;
     }
 
+    IEnumerator CombineCoroutines(List<Coroutine> coroutines)
+    {
+        foreach (var coroutine in coroutines)
+        {
+            yield return coroutine;
+        }
+    }
 
     IEnumerator MoveObjectLocalSmooth(Transform movingObject, Vector3 targetPosition, float speed)
     {
