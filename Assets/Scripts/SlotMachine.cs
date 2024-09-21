@@ -19,7 +19,9 @@ public class SlotManager : MonoBehaviour
     bool slotsSpinning = false;
 
     [Header("VisualSettings")]
-    [SerializeField] float spinSpeed = 3f;
+    [SerializeField] float spinSpeedIn = 3f;
+    [SerializeField] float spinSpeedOut = 6f;
+
 
     Transform[] verticalSlots; // 5 is max vertical slot count
 
@@ -124,7 +126,8 @@ public class SlotManager : MonoBehaviour
     private void Update()
     {
 
-        if (Input.GetKeyDown(KeyCode.S)) RunSlotAnimations();
+        if (Input.GetKeyDown(KeyCode.S)) RunSlotInAnimations();
+        if (Input.GetKeyDown(KeyCode.W)) RunSlotOutAnimations();
 
         // EDITOR CODE HERE
 
@@ -146,13 +149,13 @@ public class SlotManager : MonoBehaviour
         }
     }
     
-    private void RunSlotAnimations()
+    private void RunSlotInAnimations()
     {
         ResetSlotPositions();
-        StartCoroutine(RunSlotAnimationsCoroutine());
+        StartCoroutine(RunSlotInAnimationsCoroutine());
     }
 
-    IEnumerator RunSlotAnimationsCoroutine()
+    IEnumerator RunSlotInAnimationsCoroutine()
     {
         slotsSpinning = true;
 
@@ -162,7 +165,7 @@ public class SlotManager : MonoBehaviour
             Vector3 targetPos = new Vector3(vSlot.localPosition.x, verticalSlotYEnd, vSlot.localPosition.z);
 
             // Start the slot movement coroutine
-            yield return StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos, spinSpeed));
+            yield return StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos, spinSpeedIn));
 
             // Wait until the slot has reached its position before moving to the next slot
         }
@@ -170,6 +173,31 @@ public class SlotManager : MonoBehaviour
         SetSlotPositionsFinish();
         slotsSpinning = false;
     }
+
+    private void RunSlotOutAnimations()
+    {
+        StartCoroutine(RunSlotOutAnimationsCoroutine());
+    }
+
+    IEnumerator RunSlotOutAnimationsCoroutine()
+    {
+        slotsSpinning = true;
+
+        for (int i = 0; i < verticalSlotsCount; i++)
+        {
+            Transform vSlot = verticalSlots[i];
+            Vector3 targetPos = new Vector3(vSlot.localPosition.x, -verticalSlotYStart, vSlot.localPosition.z);
+
+            // Start the slot movement coroutine
+            yield return StartCoroutine(MoveObjectLocalSmooth(vSlot, targetPos, spinSpeedOut));
+
+            // Wait until the slot has reached its position before moving to the next slot
+        }
+
+        ResetSlotPositions();
+        slotsSpinning = false;
+    }
+
 
     IEnumerator MoveObjectLocalSmooth(Transform movingObject, Vector3 targetPosition, float speed)
     {

@@ -1141,7 +1141,7 @@ MonoBehaviour:
   editMode: 0
   scale: 0.55
   verticalSlotsCount: 5
-  spinSpeed: 3
+  spinSpeed: 4
 --- !u!1 &740946372
 GameObject:
   m_ObjectHideFlags: 0
