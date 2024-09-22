@@ -7,9 +7,10 @@ using System.Collections;
 using System.Collections.Generic;
 
 [ExecuteAlways] // Allows Update to run in the Editor
-public class SlotManager : MonoBehaviour
+public class SlotMachine : MonoBehaviour
 {
     [Space(10f)]
+    [Header("Edit Mode Needed To Change Scale & SlotCount. Do Not Change These In Run Time")]
     [SerializeField] bool editMode = false;
     [Space(10f)]
     [Range(0.01f, 1f)]
@@ -20,9 +21,15 @@ public class SlotManager : MonoBehaviour
     bool slotsSpinning = false;
 
     [Header("Spin Style")]
+    [SerializeField] bool visualsSpin = false;
+    [SerializeField] float visualsSpinTime = 1f;
+    [SerializeField] float visualsSpinSpeed = 30f;
     [SerializeField] SpinInStyle spinInStyle;
+    [SerializeField] float spinSpeedIn = 3f;
     [SerializeField] float bounceSpeed = 0.5f;
+    [SerializeField] bool spinOut = true;
     [SerializeField] SpinOutStyle spinOutStyle;
+    [SerializeField] float spinSpeedOut = 6f;
     public enum SpinOutStyle
     {
         all,
@@ -34,16 +41,12 @@ public class SlotManager : MonoBehaviour
         bouncy,
     }
 
-    [Header("Spin Settings")]
-    [SerializeField] float spinSpeedIn = 3f;
-    [SerializeField] float spinSpeedOut = 6f;
-
-
     Transform[] verticalSlots; // 5 is max vertical slot count
 
     #region References
     HorizontalLayoutGroup verticalSlotsLayoutGroup;
     Transform verticalSlotsContainer;
+    RectTransform visualSpinSlotsContainer;
     #endregion
 
     [Header("SlotValues")]
@@ -51,11 +54,12 @@ public class SlotManager : MonoBehaviour
     float verticalSlotYEnd = 0f; // Goal Y position;
 
     private bool shouldUpdateSlots = false; // Flag to control updates
+    private bool shouldSpinVisualSlots = false;
 
     private void Awake()
     {
         if (verticalSlotsContainer == null)
-            verticalSlotsContainer = transform.GetChild(0);
+            verticalSlotsContainer = transform.GetChild(1);
 
         if (verticalSlotsLayoutGroup == null)
             verticalSlotsLayoutGroup = verticalSlotsContainer.GetComponent<HorizontalLayoutGroup>();
@@ -70,18 +74,22 @@ public class SlotManager : MonoBehaviour
         {
             verticalSlots[i] = verticalSlotsContainer.GetChild(i);
         }
+
+        visualSpinSlotsContainer = transform.GetChild(0).GetChild(0).GetComponent<RectTransform>();
     }
 
     private void OnValidate()
     {
         if (verticalSlotsContainer == null)
-            verticalSlotsContainer = transform.GetChild(0);
+            verticalSlotsContainer = transform.GetChild(1);
 
         if (verticalSlotsLayoutGroup == null)
             verticalSlotsLayoutGroup = verticalSlotsContainer.GetComponent<HorizontalLayoutGroup>();
 
         verticalSlotsLayoutGroup.enabled = false;
 
+        if (visualSpinSlotsContainer == null)
+            visualSpinSlotsContainer = transform.GetChild(0).GetChild(0).GetComponent<RectTransform>();
         if (!editMode) return;
 
         verticalSlotsLayoutGroup.enabled = true;
@@ -132,6 +140,36 @@ public class SlotManager : MonoBehaviour
 #endif
         }
 
+        // Find the initial slot (assuming it is the first child)
+        if (visualSpinSlotsContainer.childCount == 0) return; // Exit if no child slots exist
+        Transform initialVisualSlot = visualSpinSlotsContainer.GetChild(0);
+
+        int currentVisualSlotCount = visualSpinSlotsContainer.childCount;
+
+        // Add slots if current count is less than the desired count
+        for (int i = currentVisualSlotCount; i < verticalSlotsCount; i++)
+        {
+            Transform newVisualSlot = Instantiate(initialVisualSlot, visualSpinSlotsContainer);
+            newVisualSlot.name = $"VerticalVisualSlot {i + 1}"; // Optional: rename slots for clarity
+        }
+
+        // Remove extra slots if current count is more than the desired count
+        for (int i = currentVisualSlotCount - 1; i >= verticalSlotsCount; i--)
+        {
+#if UNITY_EDITOR
+            DestroyImmediate(visualSpinSlotsContainer.GetChild(i).gameObject);
+#endif
+        }
+
+        if (!visualsSpin)
+        {
+            visualSpinSlotsContainer.gameObject.SetActive(false);
+        }
+        else if (!spinOut && !visualSpinSlotsContainer.gameObject.activeSelf)
+        {
+            visualSpinSlotsContainer.gameObject.SetActive(true);
+        }
+
     }
 
     private void UpdateScale()
@@ -143,8 +181,15 @@ public class SlotManager : MonoBehaviour
     {
 
         if (Input.GetKeyDown(KeyCode.S)) Spin();
-        if (Input.GetKeyDown(KeyCode.R)) SetSlotPositionsFinish();
-
+        
+        if (!visualsSpin)
+        {
+            visualSpinSlotsContainer.gameObject.SetActive(false);
+        }
+        else if (!spinOut && !visualSpinSlotsContainer.gameObject.activeSelf)
+        {
+            visualSpinSlotsContainer.gameObject.SetActive(true);
+        }
 
         // EDITOR CODE HERE
 
@@ -161,7 +206,7 @@ public class SlotManager : MonoBehaviour
     private void Spin()
     {
         if (slotsSpinning) return;
-
+        
         RunSlotAnimation();
     }
 
@@ -172,13 +217,20 @@ public class SlotManager : MonoBehaviour
 
     IEnumerator RunSlotSpinAnimation()
     {
-        RunSlotOutAnimation();
+        if (spinOut && visualsSpin)
+        {
+            visualSpinSlotsContainer.gameObject.SetActive(false);
+            RunSlotOutAnimation();
+        }
+        else if (spinOut)
+            RunSlotOutAnimation();
 
         while (slotsSpinning)
         {
             yield return null;
         }
 
+        if (spinOut && visualsSpin) visualSpinSlotsContainer.gameObject.SetActive(true);
         RunSlotInAnimation();
 
     }
@@ -200,6 +252,17 @@ public class SlotManager : MonoBehaviour
     IEnumerator RunSlotInAnimationsCoroutine()
     {
         slotsSpinning = true;
+        if (visualsSpin)
+        {
+            float time = 0;
+            shouldSpinVisualSlots = true;
+            StartCoroutine(StartVisualSlotsSpinning());
+            while (time < visualsSpinTime)
+            {
+                time += Time.deltaTime;
+                yield return null;
+            }
+        }
 
         if (spinInStyle == SpinInStyle.robust)
         {
@@ -227,9 +290,28 @@ public class SlotManager : MonoBehaviour
                 // Wait until the slot has reached its position before moving to the next slot
             }
         }
-
+        shouldSpinVisualSlots = false;
         SetSlotPositionsFinish();
         slotsSpinning = false;
+    }
+
+    IEnumerator StartVisualSlotsSpinning()
+    {
+        Vector3 targetPos = new Vector3(visualSpinSlotsContainer.localPosition.x, -540f, visualSpinSlotsContainer.localPosition.z);
+        if (spinOut) visualSpinSlotsContainer.localPosition = new Vector3(targetPos.x, 1600, targetPos.z);
+        while (shouldSpinVisualSlots)
+        {
+            if (visualSpinSlotsContainer.localPosition.y > targetPos.y)
+            {
+                visualSpinSlotsContainer.localPosition = Vector3.MoveTowards(visualSpinSlotsContainer.localPosition, targetPos, visualsSpinSpeed);
+            }
+            else
+            {
+                visualSpinSlotsContainer.localPosition = new Vector3(targetPos.x, 540, targetPos.z);
+            }
+            yield return null;
+        }
+        visualSpinSlotsContainer.localPosition = new Vector3(targetPos.x, 0, targetPos.z);
     }
 
     private void RunSlotOutAnimation()
