@@ -19,6 +19,17 @@ public class SlotMachine : MonoBehaviour
     [SerializeField] int verticalSlotsCount = 3;
 
     bool slotsSpinning = false;
+    
+    [SerializeField] SlotStyle slotStyle = SlotStyle.custom;
+    SlotStyle oldSlotStyle = SlotStyle.custom;
+    public enum SlotStyle
+    {
+        custom,
+        original,
+        fast,
+        dropping,
+        droppingOneByOne,
+    }
 
     [Header("Spin Style")]
     [SerializeField] bool visualsSpin = false;
@@ -114,6 +125,7 @@ public class SlotMachine : MonoBehaviour
         // Call the UpdateSlots logic
         UpdateSlots();
         UpdateScale();
+        UpdateSlotStyle();
     }
 #endif
 
@@ -172,6 +184,48 @@ public class SlotMachine : MonoBehaviour
 
     }
 
+    private void UpdateSlotStyle()
+    {
+        if (slotStyle == SlotStyle.custom) return;
+        else if (oldSlotStyle != slotStyle)
+        {
+            oldSlotStyle = slotStyle;
+            SetSlotStyle(slotStyle);
+        }
+    }
+    private void SetSlotStyle(SlotStyle slotStyle)
+    {
+        switch (slotStyle)
+        {
+            case SlotStyle.custom:
+                return;
+            case SlotStyle.original:
+                SetSpinStyle(true, 1, 11, SpinInStyle.bouncy, 6, 1.5f, false, SpinOutStyle.all, 6);
+                break;
+            case SlotStyle.fast:
+                SetSpinStyle(false, 0, 0, SpinInStyle.bouncy, 30, 2, true, SpinOutStyle.all, 5);
+                break;
+            case SlotStyle.dropping:
+                SetSpinStyle(false, 0.1f, 11, SpinInStyle.bouncy, 10, 1, true, SpinOutStyle.all, 6);
+                break;
+            case SlotStyle.droppingOneByOne:
+                SetSpinStyle(false, 0.1f, 11, SpinInStyle.bouncy, 10, 1, true, SpinOutStyle.oneByOne, 10);
+                break;
+
+        }
+    }
+    private void SetSpinStyle(bool visualsSpin, float visualsSpinTime, float visualsSpinSpeed, SpinInStyle spinInStyle, float spinSpeedIn, float bounceSpeed, bool spinOut, SpinOutStyle spinOutStyle, float spinSpeedOut)
+    {
+        this.visualsSpin = visualsSpin;
+        this.visualsSpinTime = visualsSpinTime;
+        this.visualsSpinSpeed = visualsSpinSpeed;
+        this.spinInStyle = spinInStyle;
+        this.spinSpeedIn = spinSpeedIn;
+        this.bounceSpeed = bounceSpeed;
+        this.spinOut = spinOut;
+        this.spinOutStyle = spinOutStyle;
+        this.spinSpeedOut = spinSpeedOut;
+    }
     private void UpdateScale()
     {
         transform.localScale = new Vector3(scale, scale, scale);
