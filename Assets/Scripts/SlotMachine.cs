@@ -5,10 +5,21 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using System;
+using Unity.VisualScripting.Antlr3.Runtime.Misc;
+
+[Serializable]
+public class SlotSymbol
+{
+    public string symbolName;
+    public Sprite sprite;
+    public float multiplier;
+}
 
 [ExecuteAlways] // Allows Update to run in the Editor
 public class SlotMachine : MonoBehaviour
 {
+    [SerializeField] private SlotSymbol[] slotSymbols;
     [Space(10f)]
     [Header("Edit Mode Needed To Change Scale & SlotCount. Do Not Change These In Run Time")]
     [SerializeField] bool editMode = false;
@@ -17,6 +28,8 @@ public class SlotMachine : MonoBehaviour
     [SerializeField] float scale = 0.5f;
     [Range(3, 5)]
     [SerializeField] int verticalSlotsCount = 3;
+
+    List<GameObject> slots = new List<GameObject>();
 
     bool slotsSpinning = false;
     
@@ -87,6 +100,8 @@ public class SlotMachine : MonoBehaviour
         }
 
         visualSpinSlotsContainer = transform.GetChild(0).GetChild(0).GetComponent<RectTransform>();
+
+        InitSlotSymbols();
     }
 
     private void OnValidate()
@@ -184,6 +199,22 @@ public class SlotMachine : MonoBehaviour
 
     }
 
+    private void InitSlotSymbols()
+    {
+        foreach (Transform verticalSlot in verticalSlotsContainer)
+        {
+            // Get all Slot children inside each VerticalSlot
+            foreach (Transform slot in verticalSlot)
+            {
+                // Add to the list if it's a Slot
+                if (slot.name.StartsWith("Slot"))
+                {
+                    slots.Add(slot.gameObject);
+                }
+            }
+        }
+    }
+    
     private void UpdateSlotStyle()
     {
         if (slotStyle == SlotStyle.custom) return;
@@ -193,6 +224,7 @@ public class SlotMachine : MonoBehaviour
             SetSlotStyle(slotStyle);
         }
     }
+
     private void SetSlotStyle(SlotStyle slotStyle)
     {
         switch (slotStyle)
@@ -260,8 +292,16 @@ public class SlotMachine : MonoBehaviour
     private void Spin()
     {
         if (slotsSpinning) return;
-        
+
         RunSlotAnimation();
+
+        foreach (var slot in slots)
+        {
+            int rndIndex = UnityEngine.Random.Range(0, slotSymbols.Length);
+            SlotSymbol slotSymbol = slotSymbols[rndIndex];
+            slot.name = slotSymbol.symbolName;
+            slot.GetComponent<Image>().sprite = slotSymbols[rndIndex].sprite;
+        }
     }
 
     private void RunSlotAnimation()
