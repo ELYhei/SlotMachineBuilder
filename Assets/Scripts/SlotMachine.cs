@@ -30,6 +30,8 @@ public class SlotMachine : MonoBehaviour
     [SerializeField] int verticalSlotsCount = 3;
 
     List<GameObject> slots = new List<GameObject>();
+    List<GameObject> visualSlots = new List<GameObject>();
+    Transform verticalVisualSlotsContainer;
 
     bool slotsSpinning = false;
     
@@ -111,8 +113,11 @@ public class SlotMachine : MonoBehaviour
 
         if (verticalSlotsLayoutGroup == null)
             verticalSlotsLayoutGroup = verticalSlotsContainer.GetComponent<HorizontalLayoutGroup>();
-
+    
         verticalSlotsLayoutGroup.enabled = false;
+
+        if (verticalVisualSlotsContainer == null)
+            verticalVisualSlotsContainer = transform.GetChild(0).GetChild(0);
 
         if (visualSpinSlotsContainer == null)
             visualSpinSlotsContainer = transform.GetChild(0).GetChild(0).GetComponent<RectTransform>();
@@ -213,6 +218,16 @@ public class SlotMachine : MonoBehaviour
                 }
             }
         }
+        foreach (Transform verticalVisualSlot in verticalVisualSlotsContainer)
+        {
+            foreach (Transform visualSlot in verticalVisualSlot)
+            {
+                if (visualSlot.name.StartsWith("Slot"))
+                {
+                    visualSlots.Add(visualSlot.gameObject);
+                }
+            }
+        }
     }
     
     private void UpdateSlotStyle()
@@ -288,13 +303,21 @@ public class SlotMachine : MonoBehaviour
             shouldUpdateSlots = false;
         }
     }
-
+    
+    private void CheckSlotMatches()
+    {
+        Debug.Log("Checking...");
+    }
     private void Spin()
     {
         if (slotsSpinning) return;
 
         RunSlotAnimation();
 
+    }
+
+    private void SetSlotSymbols()
+    {
         foreach (var slot in slots)
         {
             int rndIndex = UnityEngine.Random.Range(0, slotSymbols.Length);
@@ -308,7 +331,17 @@ public class SlotMachine : MonoBehaviour
     {
         StartCoroutine(RunSlotSpinAnimation());
     }
-
+    
+    private void SetVisualSlotSymbols()
+    {
+        foreach (var slot in visualSlots)
+        {
+            int rndIndex = UnityEngine.Random.Range(0, slotSymbols.Length);
+            SlotSymbol slotSymbol = slotSymbols[rndIndex];
+            slot.name = slotSymbol.symbolName;
+            slot.GetComponent<Image>().sprite = slotSymbols[rndIndex].sprite;
+        }
+    }
     IEnumerator RunSlotSpinAnimation()
     {
         if (spinOut && visualsSpin)
@@ -318,6 +351,8 @@ public class SlotMachine : MonoBehaviour
         }
         else if (spinOut)
             RunSlotOutAnimation();
+
+        SetVisualSlotSymbols();
 
         while (slotsSpinning)
         {
@@ -335,6 +370,7 @@ public class SlotMachine : MonoBehaviour
         {
             verticalSlot.localPosition = new Vector3(verticalSlot.localPosition.x, verticalSlotYStart, verticalSlot.localPosition.z);
         }
+        SetSlotSymbols();
     }
     
     private void RunSlotInAnimation()
@@ -387,6 +423,7 @@ public class SlotMachine : MonoBehaviour
         shouldSpinVisualSlots = false;
         SetSlotPositionsFinish();
         slotsSpinning = false;
+        CheckSlotMatches();
     }
 
     IEnumerator StartVisualSlotsSpinning()
