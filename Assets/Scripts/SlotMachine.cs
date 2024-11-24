@@ -6,7 +6,6 @@ using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
 using System;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
 
 [Serializable]
 public class SlotSymbol
@@ -277,7 +276,6 @@ public class SlotMachine : MonoBehaviour
     {
         transform.localScale = new Vector3(scale, scale, scale);
     }
-    
     private void Update()
     {
 
@@ -303,7 +301,6 @@ public class SlotMachine : MonoBehaviour
             shouldUpdateSlots = false;
         }
     }
-    
     private void CheckSlotMatches()
     {
         Debug.Log("Checking...");
@@ -315,7 +312,6 @@ public class SlotMachine : MonoBehaviour
         RunSlotAnimation();
 
     }
-
     private void SetSlotSymbols()
     {
         foreach (var slot in slots)
@@ -326,12 +322,10 @@ public class SlotMachine : MonoBehaviour
             slot.GetComponent<Image>().sprite = slotSymbols[rndIndex].sprite;
         }
     }
-
     private void RunSlotAnimation()
     {
         StartCoroutine(RunSlotSpinAnimation());
     }
-    
     private void SetVisualSlotSymbols()
     {
         foreach (var slot in visualSlots)
@@ -363,7 +357,6 @@ public class SlotMachine : MonoBehaviour
         RunSlotInAnimation();
 
     }
-    
     private void ResetSlotPositions()
     {
         foreach (Transform verticalSlot in verticalSlots)
@@ -372,13 +365,11 @@ public class SlotMachine : MonoBehaviour
         }
         SetSlotSymbols();
     }
-    
     private void RunSlotInAnimation()
     {
         ResetSlotPositions();
         StartCoroutine(RunSlotInAnimationsCoroutine());
     }
-
     IEnumerator RunSlotInAnimationsCoroutine()
     {
         slotsSpinning = true;
@@ -425,7 +416,6 @@ public class SlotMachine : MonoBehaviour
         slotsSpinning = false;
         CheckSlotMatches();
     }
-
     IEnumerator StartVisualSlotsSpinning()
     {
         Vector3 targetPos = new Vector3(visualSpinSlotsContainer.localPosition.x, -540f, visualSpinSlotsContainer.localPosition.z);
@@ -444,12 +434,10 @@ public class SlotMachine : MonoBehaviour
         }
         visualSpinSlotsContainer.localPosition = new Vector3(targetPos.x, 0, targetPos.z);
     }
-
     private void RunSlotOutAnimation()
     {
         StartCoroutine(RunSlotOutAnimationsCoroutine());
     }
-
     IEnumerator RunSlotOutAnimationsCoroutine()
     {
         slotsSpinning = true;
@@ -488,7 +476,6 @@ public class SlotMachine : MonoBehaviour
         ResetSlotPositions();
         slotsSpinning = false;
     }
-
     IEnumerator CombineCoroutines(List<Coroutine> coroutines)
     {
         foreach (var coroutine in coroutines)
@@ -496,7 +483,6 @@ public class SlotMachine : MonoBehaviour
             yield return coroutine;
         }
     }
-
     IEnumerator MoveObjectLocalSmooth(Transform movingObject, Vector3 targetPosition, float speed)
     {
         float threshold = 0.1f; // Define a small threshold for floating-point precision issues
@@ -510,7 +496,6 @@ public class SlotMachine : MonoBehaviour
         // Snap to the exact position to avoid issues due to floating-point precision
         movingObject.localPosition = targetPosition;
     }
-
     private void SetSlotPositionsFinish()
     {
         foreach (Transform verticalSlot in verticalSlots)
