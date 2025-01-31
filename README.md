@@ -1,2 +1,2 @@
 # SlotMachineBuilder
-Make Different Slot Machines In Seconds With Unity
+Make Different Slot Machines In Seconds With Unity(not ready)
